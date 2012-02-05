@@ -73,7 +73,23 @@ class ApeHandler(tornado.web.RequestHandler):
         self.payload.append(close)
         self.send(self.payload)
 
+    def close(self):
+        # Some times the client has disconnected and this will raise IO Error
+        try:
+            self.finish()
+        except IOError:
+            pass
+
     def handle(self, commands):
+        for command in commands:
+            if "sessid" in command:
+                if not self.long_poll(command['sessid']):
+                    self.set_status(400)
+                    self.write('Session not found')
+                    self.close()
+                    return
+                del command['sessid']
+
         for command in commands:
             self.command(command)
     
@@ -98,14 +114,12 @@ class ApeHandler(tornado.web.RequestHandler):
         if "chl" in command:
             del command["chl"]
 
-        if "sessid" in command:
-            self.long_poll(command['sessid'])
-
         method(**command)
 
     def long_poll(self, sessid):
         if sessid not in sessions:
-            raise tornado.web.HTTPError(400, "Session Not Found")
+            return False
+            #raise tornado.web.HTTPError(400, "Session Not Found")
 
         self.session = sessions[sessid]
 
@@ -113,6 +127,7 @@ class ApeHandler(tornado.web.RequestHandler):
         for request in self.session.requests.copy():
             request.send_close()
         self.session.add_request(self)
+        return True
     
     def not_found(self, command):
         print "No hander found for cmd '" + command['cmd'] + "'. Params: " + str(command)
@@ -145,8 +160,8 @@ class ApeHandler(tornado.web.RequestHandler):
         ident = self.response(raw="IDENT", data=user)
         self.payload.append(ident)
 
-    def cmd_check(self, cmd, sessid):
-        print "chk: {0}".format(sessid)
+    def cmd_check(self, cmd):
+        print "chk: {0}".format(self.session.token)
 
     def get_channel(self, chan_name):
         if chan_name in channels:

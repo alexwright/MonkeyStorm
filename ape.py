@@ -24,25 +24,53 @@ class ApeSession:
         sessions[self.token] = self
 
     def remove_request(self, request):
-        if request in self.requests:
+        if request in self.requests.copy():
             self.requests.remove(request)
 
     def add_request(self, request):
         self.requests.add(request)
 
+    def send_raw(self, raw_name, data):
+        for request in self.requests.copy():
+            request.send_raw(raw_name, data)
+
+    def get_pipe_info(self):
+        return {
+            "casttype":"uni",
+            "pubid":self.pubid,
+            "properties":self.properties,
+        }
+
 channels = dict()
 class ApeChannel:
     def __init__(self, name):
         self.name = name
+        channels[self.name] = self
         self.token = gen_token()
         self.subs = set()
 
     def join(self, session):
+        self.send_raw('JOIN', data={"user":session.get_pipe_info(), "pipe":self.get_pipe_info() }, not_to=set([session]))
         self.subs.add(session)
 
     def part(self, session):
         if session in self.subs:
             self.subs.remove(session)
+
+    def send_raw(self, raw_name, data, not_to=None):
+        data['pipe'] = self.get_pipe_info()
+        for session in self.subs.copy():
+            if not_to is None or session not in not_to:
+                session.send_raw(raw_name, data)
+            else:
+                print "Not sending to: " + str(session)
+
+    def get_pipe_info(self):
+        return {
+            "casttype":"multi",
+            "pubid":self.token,
+            "properties":{"name":self.name},
+        }
 
 class ApeHandler(tornado.web.RequestHandler):
     def get(self):
@@ -72,6 +100,14 @@ class ApeHandler(tornado.web.RequestHandler):
         close = self.response(raw="CLOSE", data={})
         self.payload.append(close)
         self.send(self.payload)
+
+    def send_raw(self, raw_name, data):
+        res = self.response(raw=raw_name, data=data)
+
+        self.payload.append(res)
+        self.send(self.payload)
+
+        print "send_raw(): " + str(res)
 
     def close(self):
         # Some times the client has disconnected and this will raise IO Error

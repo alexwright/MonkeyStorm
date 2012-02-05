@@ -124,10 +124,10 @@ class ApeHandler(tornado.web.RequestHandler):
         if "name" in params:
             s.properties['name'] = params['name']
 
-        login = self.response(raw="LOGIN", data={"sessid":s.token}, properties=s.properties)
+        login = self.response(raw="LOGIN", data={"sessid":s.token})
         self.payload.append(login)
 
-        user = {"user":{"casttype":"uni", "pubid":s.pubid}}
+        user = {"user":{"casttype":"uni", "pubid":s.pubid, "properties":s.properties}}
         ident = self.response(raw="IDENT", data=user)
         self.payload.append(ident)
 

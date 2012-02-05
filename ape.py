@@ -98,7 +98,21 @@ class ApeHandler(tornado.web.RequestHandler):
         if "chl" in command:
             del command["chl"]
 
+        if "sessid" in command:
+            self.long_poll(command['sessid'])
+
         method(**command)
+
+    def long_poll(self, sessid):
+        if sessid not in sessions:
+            raise tornado.web.HTTPError(400, "Session Not Found")
+
+        self.session = sessions[sessid]
+
+        # This request will become the active long-poll request for the session. Replace any others.
+        for request in self.session.requests.copy():
+            request.send_close()
+        self.session.add_request(self)
     
     def not_found(self, command):
         print "No hander found for cmd '" + command['cmd'] + "'. Params: " + str(command)
@@ -132,18 +146,6 @@ class ApeHandler(tornado.web.RequestHandler):
         self.payload.append(ident)
 
     def cmd_check(self, cmd, sessid):
-        if sessid not in sessions:
-            self.set_status(400)
-            self.finish()
-            return
-
-        self.session = sessions[sessid]
-
-        for request in self.session.requests.copy():
-            request.send_close()
-
-        self.session.add_request(self)
-
         print "chk: {0}".format(sessid)
 
     def get_channel(self, chan_name):

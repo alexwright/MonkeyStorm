@@ -225,12 +225,12 @@ class ApeHandler(tornado.web.RequestHandler):
 
         print "Join: " + str(params)
 
-application = tornado.web.Application([
-    (r'/', ApeHandler),
-    (r'/0/', ApeHandler),
-])
-
 if __name__ == "__main__":
+    application = tornado.web.Application([
+        (r'/', ApeHandler),
+        (r'/0/', ApeHandler),
+    ])
+
     print "Starting."
     application.listen(6969)
     tornado.ioloop.IOLoop.instance().start()

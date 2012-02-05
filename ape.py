@@ -163,7 +163,7 @@ class ApeHandler(tornado.web.RequestHandler):
             pipe = {"casttype":"multi", "pubid":chan.token, "properties":{ "name":chan.name }}
             users = []
             for s in chan.subs:
-                users.append({ "casttype":"uni", "pubid":s.token, "properties":s.properties })
+                users.append({ "casttype":"uni", "pubid":s.pubid, "properties":s.properties })
 
             join = self.response(raw="CHANNEL", data={"pipe":pipe, "users":users })
             self.payload.append(join)
